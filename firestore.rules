@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: transfers
+    // Document ID: 6-digit code (e.g., "123456")
+    // Fields:
+    //   - id: string (required) - 6-digit code
+    //   - type: string (required) - "file" or "code"
+    //   - name: string (optional) - file name or snippet title
+    //   - content: string (optional) - text content for code
+    //   - fileUrl: string (optional) - storage URL
+    //   - fileSize: number (optional) - file size in bytes
+    //   - language: string (optional) - programming language
+    //   - createdAt: timestamp (required)
+    //   - expiresAt: timestamp (required)
+    //   - senderId: string (optional) - UID of sender
+    //
+    // Collection: users
+    // Document ID: userId
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - photoURL: string
+    //   - createdAt: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidTransfer(data) {
+      return data.id is string && data.id.size() == 6 &&
+             data.type in ['file', 'code'] &&
+             (!('name' in data) || (data.name is string && data.name.size() < 255)) &&
+             (!('content' in data) || (data.content is string && data.content.size() < 1000000)) &&
+             (!('fileUrl' in data) || (data.fileUrl is string && data.fileUrl.size() < 2048)) &&
+             (!('fileSize' in data) || (data.fileSize is number && data.fileSize >= 0)) &&
+             data.createdAt is timestamp &&
+             data.expiresAt is timestamp;
+    }
+
+    function isValidUser(data) {
+      return data.uid is string && data.uid == request.auth.uid &&
+             data.email is string && data.email.size() > 0;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /transfers/{transferId} {
+      // Transfers are publicly readable if you have the 6-digit code
+      // This matches the "ShareMe" P2P style where the code is the key
+      allow read: if true; 
+      
+      allow create: if isValidTransfer(request.resource.data);
+      
+      // Only allow deletion by the sender if they are logged in
+      allow delete: if isAuthenticated() && resource.data.senderId == request.auth.uid;
+      
+      // Updates are not allowed for transfers to maintain integrity
+      allow update: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+  }
+}

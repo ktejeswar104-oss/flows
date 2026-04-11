@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "Transfer": {
+      "title": "Transfer",
+      "description": "A file or code transfer session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique 6-digit code" },
+        "type": { "type": "string", "enum": ["file", "code"], "description": "Type of transfer" },
+        "name": { "type": "string", "description": "File name or snippet title" },
+        "content": { "type": "string", "description": "Text content for code, or metadata for files" },
+        "fileUrl": { "type": "string", "description": "URL to the uploaded file in storage" },
+        "fileSize": { "type": "number", "description": "Size of the file in bytes" },
+        "language": { "type": "string", "description": "Programming language for code snippets" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of creation" },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "Timestamp when the transfer expires" },
+        "senderId": { "type": "string", "description": "UID of the sender" }
+      },
+      "required": ["id", "type", "createdAt", "expiresAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "firestore": {
+    "/transfers/{transferId}": {
+      "schema": "Transfer",
+      "description": "Active file and code transfers"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    }
+  }
+}
